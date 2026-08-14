@@ -1,7 +1,6 @@
 #import <Foundation/Foundation.h>
 #import <Security/Security.h>
 
-// Hook vào app launch, wipe toàn bộ Keychain entries của Grok
 __attribute__((constructor))
 static void KeychainWipeOnLoad(void) {
     NSArray *secClasses = @[
@@ -17,7 +16,6 @@ static void KeychainWipeOnLoad(void) {
         SecItemDelete((__bridge CFDictionaryRef)query);
     }
     
-    // Wipe NSUserDefaults cũng luôn
     NSString *appDomain = [[NSBundle mainBundle] bundleIdentifier];
     [[NSUserDefaults standardUserDefaults] removePersistentDomainForName:appDomain];
     [[NSUserDefaults standardUserDefaults] synchronize];
