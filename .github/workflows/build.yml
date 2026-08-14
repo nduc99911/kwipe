@@ -1,8 +1,64 @@
-      - name: Build KeychainNuke app
+name: Build iOS Dylibs + KeychainNuke IPA
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s $(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-path
+
+      - name: Build KeychainWipe.dylib
         run: |
           SDK=$(xcrun --sdk iphoneos --show-sdk-path)
-          
-          # Compile binary
+          clang \
+            -arch arm64 \
+            -isysroot "$SDK" \
+            -framework Foundation \
+            -framework Security \
+            -dynamiclib \
+            -install_name @rpath/KeychainWipe.dylib \
+            -miphoneos-version-min=14.0 \
+            -Wno-deprecated-declarations \
+            -Wno-objc-multiple-method-names \
+            -o KeychainWipe.dylib \
+            KeychainWipe.m
+          file KeychainWipe.dylib
+          ls -lh KeychainWipe.dylib
+
+      - name: Build FakeSKPayment.dylib
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          clang \
+            -arch arm64 \
+            -isysroot "$SDK" \
+            -framework Foundation \
+            -framework StoreKit \
+            -dynamiclib \
+            -install_name @rpath/FakeSKPayment.dylib \
+            -miphoneos-version-min=14.0 \
+            -Wno-deprecated-declarations \
+            -Wno-objc-multiple-method-names \
+            -o FakeSKPayment.dylib \
+            FakeSKPayment.m
+          file FakeSKPayment.dylib
+          ls -lh FakeSKPayment.dylib
+
+      - name: Build KeychainNuke IPA
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+
           clang \
             -arch arm64 \
             -isysroot "$SDK" \
@@ -10,21 +66,44 @@
             -framework Security \
             -framework UIKit \
             -miphoneos-version-min=14.0 \
+            -Wno-deprecated-declarations \
             -o KeychainNuke \
             main.m
-          
-          # Buat struktur .app
+
           mkdir -p Payload/KeychainNuke.app
           cp KeychainNuke Payload/KeychainNuke.app/
           cp Info.plist Payload/KeychainNuke.app/
-          
-          # Pack thành IPA
           zip -r KeychainNuke.ipa Payload/
+          file KeychainNuke.ipa
           ls -lh KeychainNuke.ipa
+
+      - name: Upload KeychainWipe.dylib
+        uses: actions/upload-artifact@v4.4.0
+        with:
+          name: KeychainWipe-dylib
+          path: KeychainWipe.dylib
+          retention-days: 7
+
+      - name: Upload FakeSKPayment.dylib
+        uses: actions/upload-artifact@v4.4.0
+        with:
+          name: FakeSKPayment-dylib
+          path: FakeSKPayment.dylib
+          retention-days: 7
 
       - name: Upload KeychainNuke IPA
         uses: actions/upload-artifact@v4.4.0
         with:
           name: KeychainNuke-IPA
           path: KeychainNuke.ipa
+          retention-days: 7
+
+      - name: Upload All
+        uses: actions/upload-artifact@v4.4.0
+        with:
+          name: All-Outputs
+          path: |
+            KeychainWipe.dylib
+            FakeSKPayment.dylib
+            KeychainNuke.ipa
           retention-days: 7
