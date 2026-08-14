@@ -7,59 +7,36 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-13
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+      - name: Checkout
+        uses: actions/checkout@v3
 
-      - name: Select Xcode
-        run: |
-          sudo xcode-select -s $(ls -d /Applications/Xcode*.app | sort -V | tail -1)
-          xcodebuild -version
-          xcrun --sdk iphoneos --show-sdk-path
-
-      - name: Build KeychainWipe.dylib
+      - name: Build dylibs
         run: |
           SDK=$(xcrun --sdk iphoneos --show-sdk-path)
-          clang \
-            -arch arm64 \
+          
+          clang -arch arm64 \
             -isysroot "$SDK" \
             -framework Foundation \
             -framework Security \
             -dynamiclib \
-            -install_name @rpath/KeychainWipe.dylib \
-            -miphoneos-version-min=14.0 \
-            -Wno-deprecated-declarations \
-            -Wno-objc-multiple-method-names \
             -o KeychainWipe.dylib \
             KeychainWipe.m
-          file KeychainWipe.dylib
-          ls -lh KeychainWipe.dylib
-
-      - name: Build FakeSKPayment.dylib
-        run: |
-          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
-          clang \
-            -arch arm64 \
+          
+          clang -arch arm64 \
             -isysroot "$SDK" \
             -framework Foundation \
             -framework StoreKit \
             -dynamiclib \
-            -install_name @rpath/FakeSKPayment.dylib \
-            -miphoneos-version-min=14.0 \
-            -Wno-deprecated-declarations \
-            -Wno-objc-multiple-method-names \
             -o FakeSKPayment.dylib \
             FakeSKPayment.m
-          file FakeSKPayment.dylib
-          ls -lh FakeSKPayment.dylib
 
-      - name: Upload All Dylibs
-        uses: actions/upload-artifact@v4.4.0
+      - name: Upload
+        uses: actions/upload-artifact@v3
         with:
           name: All-Dylibs
           path: |
             KeychainWipe.dylib
             FakeSKPayment.dylib
-          retention-days: 7
