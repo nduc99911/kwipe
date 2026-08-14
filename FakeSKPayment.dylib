@@ -1,31 +1,43 @@
-
 #import <Foundation/Foundation.h>
 #import <StoreKit/StoreKit.h>
 #import <objc/runtime.h>
 
-// Hook SKPaymentQueue để fake transaction purchased
-@interface FakeSKPaymentObserver : NSObject <SKPaymentTransactionObserver>
+@interface FakeSKObserver : NSObject <SKPaymentTransactionObserver>
 @end
 
-@implementation FakeSKPaymentObserver
+@implementation FakeSKObserver
 
-- (void)paymentQueue:(SKPaymentQueue *)queue 
+- (void)paymentQueue:(SKPaymentQueue *)queue
  updatedTransactions:(NSArray<SKPaymentTransaction *> *)transactions {
-    for (SKPaymentTransaction *transaction in transactions) {
-        // Force tất cả transaction thành purchased
-        object_setIvar(transaction, 
-            class_getInstanceVariable([transaction class], "_transactionState"),
-            (id)(NSUInteger)SKPaymentTransactionStatePurchased);
-        [queue finishTransaction:transaction];
+    for (SKPaymentTransaction *tx in transactions) {
+        if (tx.transactionState == SKPaymentTransactionStatePurchasing ||
+            tx.transactionState == SKPaymentTransactionStateFailed) {
+            Ivar stateVar = class_getInstanceVariable([tx class], "_transactionState");
+            if (stateVar) {
+                object_setIvar(tx, stateVar,
+                    (id)(NSUInteger)SKPaymentTransactionStatePurchased);
+            }
+            [queue finishTransaction:tx];
+        }
     }
+}
+
+- (void)paymentQueue:(SKPaymentQueue *)queue
+removedTransactions:(NSArray<SKPaymentTransaction *> *)transactions {}
+
+- (void)paymentQueueRestoreCompletedTransactionsFinished:(SKPaymentQueue *)queue {}
+
+- (void)paymentQueue:(SKPaymentQueue *)queue
+restoreCompletedTransactionsFailedWithError:(NSError *)error {
+    // Suppress restore errors
 }
 
 @end
 
-static FakeSKPaymentObserver *observer;
+static FakeSKObserver *_observer;
 
 __attribute__((constructor))
-static void FakeStoreKitInit(void) {
-    observer = [[FakeSKPaymentObserver alloc] init];
-    [[SKPaymentQueue defaultQueue] addTransactionObserver:observer];
+static void FakeSKInit(void) {
+    _observer = [[FakeSKObserver alloc] init];
+    [[SKPaymentQueue defaultQueue] addTransactionObserver:_observer];
 }
