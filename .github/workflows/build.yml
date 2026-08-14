@@ -1,19 +1,23 @@
-name: Build dylib
+name: Build iOS Dylibs
 
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: macos-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode
+      - name: Select latest Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Show SDK path
+        run: xcrun --sdk iphoneos --show-sdk-path
 
       - name: Build KeychainWipe.dylib
         run: |
@@ -24,11 +28,44 @@ jobs:
                 -framework Security \
                 -dynamiclib \
                 -install_name @rpath/KeychainWipe.dylib \
+                -Wno-deprecated-declarations \
                 -o KeychainWipe.dylib \
                 KeychainWipe.m
+          echo "KeychainWipe built: $(ls -lh KeychainWipe.dylib)"
 
-      - name: Upload
+      - name: Build FakeSKPayment.dylib
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          clang -arch arm64 \
+                -isysroot "$SDK" \
+                -framework Foundation \
+                -framework StoreKit \
+                -dynamiclib \
+                -install_name @rpath/FakeSKPayment.dylib \
+                -Wno-deprecated-declarations \
+                -o FakeSKPayment.dylib \
+                FakeSKPayment.m
+          echo "FakeSKPayment built: $(ls -lh FakeSKPayment.dylib)"
+
+      - name: Upload KeychainWipe
         uses: actions/upload-artifact@v4
         with:
           name: KeychainWipe-dylib
           path: KeychainWipe.dylib
+          retention-days: 7
+
+      - name: Upload FakeSKPayment
+        uses: actions/upload-artifact@v4
+        with:
+          name: FakeSKPayment-dylib
+          path: FakeSKPayment.dylib
+          retention-days: 7
+
+      - name: Upload both combined
+        uses: actions/upload-artifact@v4
+        with:
+          name: All-Dylibs
+          path: |
+            KeychainWipe.dylib
+            FakeSKPayment.dylib
+          retention-days: 7
