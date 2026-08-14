@@ -107,3 +107,27 @@ jobs:
             FakeSKPayment.dylib
             KeychainNuke.ipa
           retention-days: 7
+      - name: Build StoreKit2Hook.dylib
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          clang \
+            -arch arm64 \
+            -isysroot "$SDK" \
+            -framework Foundation \
+            -framework StoreKit \
+            -dynamiclib \
+            -install_name @rpath/StoreKit2Hook.dylib \
+            -miphoneos-version-min=15.0 \
+            -Wno-deprecated-declarations \
+            -o StoreKit2Hook.dylib \
+            StoreKit2Hook.m
+          file StoreKit2Hook.dylib
+          ls -lh StoreKit2Hook.dylib
+
+      - name: Upload StoreKit2Hook
+        uses: actions/upload-artifact@v4.4.0
+        with:
+          name: StoreKit2Hook-dylib
+          path: StoreKit2Hook.dylib
+          retention-days: 7
+  
