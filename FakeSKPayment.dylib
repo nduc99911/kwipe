@@ -1,1 +1,31 @@
 
+#import <Foundation/Foundation.h>
+#import <StoreKit/StoreKit.h>
+#import <objc/runtime.h>
+
+// Hook SKPaymentQueue để fake transaction purchased
+@interface FakeSKPaymentObserver : NSObject <SKPaymentTransactionObserver>
+@end
+
+@implementation FakeSKPaymentObserver
+
+- (void)paymentQueue:(SKPaymentQueue *)queue 
+ updatedTransactions:(NSArray<SKPaymentTransaction *> *)transactions {
+    for (SKPaymentTransaction *transaction in transactions) {
+        // Force tất cả transaction thành purchased
+        object_setIvar(transaction, 
+            class_getInstanceVariable([transaction class], "_transactionState"),
+            (id)(NSUInteger)SKPaymentTransactionStatePurchased);
+        [queue finishTransaction:transaction];
+    }
+}
+
+@end
+
+static FakeSKPaymentObserver *observer;
+
+__attribute__((constructor))
+static void FakeStoreKitInit(void) {
+    observer = [[FakeSKPaymentObserver alloc] init];
+    [[SKPaymentQueue defaultQueue] addTransactionObserver:observer];
+}
