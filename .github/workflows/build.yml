@@ -44,7 +44,6 @@ jobs:
             -arch arm64 \
             -isysroot "$SDK" \
             -framework Foundation \
-            -framework StoreKit \
             -dynamiclib \
             -install_name @rpath/FakeSKPayment.dylib \
             -miphoneos-version-min=14.0 \
@@ -55,10 +54,25 @@ jobs:
           file FakeSKPayment.dylib
           ls -lh FakeSKPayment.dylib
 
+      - name: Build StoreKit2Hook.dylib
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          clang \
+            -arch arm64 \
+            -isysroot "$SDK" \
+            -framework Foundation \
+            -dynamiclib \
+            -install_name @rpath/StoreKit2Hook.dylib \
+            -miphoneos-version-min=15.0 \
+            -Wno-deprecated-declarations \
+            -o StoreKit2Hook.dylib \
+            StoreKit2Hook.m
+          file StoreKit2Hook.dylib
+          ls -lh StoreKit2Hook.dylib
+
       - name: Build KeychainNuke IPA
         run: |
           SDK=$(xcrun --sdk iphoneos --show-sdk-path)
-
           clang \
             -arch arm64 \
             -isysroot "$SDK" \
@@ -69,7 +83,6 @@ jobs:
             -Wno-deprecated-declarations \
             -o KeychainNuke \
             main.m
-
           mkdir -p Payload/KeychainNuke.app
           cp KeychainNuke Payload/KeychainNuke.app/
           cp Info.plist Payload/KeychainNuke.app/
@@ -91,6 +104,13 @@ jobs:
           path: FakeSKPayment.dylib
           retention-days: 7
 
+      - name: Upload StoreKit2Hook.dylib
+        uses: actions/upload-artifact@v4.4.0
+        with:
+          name: StoreKit2Hook-dylib
+          path: StoreKit2Hook.dylib
+          retention-days: 7
+
       - name: Upload KeychainNuke IPA
         uses: actions/upload-artifact@v4.4.0
         with:
@@ -105,29 +125,6 @@ jobs:
           path: |
             KeychainWipe.dylib
             FakeSKPayment.dylib
+            StoreKit2Hook.dylib
             KeychainNuke.ipa
           retention-days: 7
-      - name: Build StoreKit2Hook.dylib
-        run: |
-          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
-          clang \
-            -arch arm64 \
-            -isysroot "$SDK" \
-            -framework Foundation \
-            -framework StoreKit \
-            -dynamiclib \
-            -install_name @rpath/StoreKit2Hook.dylib \
-            -miphoneos-version-min=15.0 \
-            -Wno-deprecated-declarations \
-            -o StoreKit2Hook.dylib \
-            StoreKit2Hook.m
-          file StoreKit2Hook.dylib
-          ls -lh StoreKit2Hook.dylib
-
-      - name: Upload StoreKit2Hook
-        uses: actions/upload-artifact@v4.4.0
-        with:
-          name: StoreKit2Hook-dylib
-          path: StoreKit2Hook.dylib
-          retention-days: 7
-  
